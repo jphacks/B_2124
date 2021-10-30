@@ -175,24 +175,40 @@ try:
 except Exception as e:
     record_voice()
 
-# recognition
-print_lcd("Recognition begin")
-time.sleep_ms(1000)
-
 while True:
     time.sleep_ms(200)
-    print_lcd("Please speak word!", button_a_label + ":Record Voice", serial_out=False)
-    if (button_a.value() == 0):
-        record_voice()
-    if sr.Done == sr.recognize():
-        res = sr.result()
-        print("(Number,dtw_value,currnt_frame_len,matched_frame_len)=" + str(res))
-        print_lcd(str3=str(res))
-        if (res != None) and (res[1] < dtw_threshold) and (res[2] > frame_len_threshold):
-            print(str(res[0]))
-            for i in range(len(words)):
-                if res[0] == (i * 2):
-                    print_lcd("Recognize",str3="Word: " + words[i], bgcolor=(0, 255, 255))
-                    # data_packet = bytearray([0xFF, 0x05, 0xFF, i]) # header FF05FF
-                    uart_port.write(words[i] + "\n")
-                    time.sleep_ms(200)
+    # シリアル通信で"E"を受け取ったら音声認識モードに
+    if uart_port.any():
+        read_data = uart_port.read(1)  # 1文字読み取り
+        if read_data == b'E':
+            print("recv = ", read_data)
+
+            # recognition
+            print_lcd("Recognition begin")
+            time.sleep_ms(1000)
+            while True:
+                print_lcd("Please speak word!", button_a_label + ":Record Voice", serial_out=False)
+                if (button_a.value() == 0):
+                    record_voice()
+                if sr.Done == sr.recognize():
+                    res = sr.result()
+                    print("(Number,dtw_value,currnt_frame_len,matched_frame_len)=" + str(res))
+                    print_lcd(str3=str(res))
+                    if (res != None) and (res[1] < dtw_threshold) and (res[2] > frame_len_threshold):
+                        print(str(res[0]))
+                        for i in range(len(words)):
+                            if res[0] == (i * 2):
+                                print_lcd("Recognize",str3="Word: " + words[i], bgcolor=(0, 255, 255))
+                                uart_port.write(words[i] + "\n")
+                                time.sleep_ms(200)
+                # シリアル通信で"D"を受け取ったら終了，Mなら音声再生
+                if uart_port.any():
+                    read_data = uart_port.read(1)  # 1文字読み取り
+                    if read_data == b'D':
+                        print("Disabled mode")
+                        uart_port.write(b"W")
+                        break
+                    elif read_data == b'M':
+                        print("Music mode")
+                        uart_port.write(b"M")
+                        # TODO: 音声再生処理
