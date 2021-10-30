@@ -1,3 +1,4 @@
+import audio
 from board import board_info
 from fpioa_manager import *
 import image
@@ -44,6 +45,15 @@ if (BOARD_NAME == "M5STICKV"):
     fm.register(35, fm.fpioa.UART2_RX, force=True)
     fm.register(board_info.BUTTON_A, fm.fpioa.GPIO1, force=True)
     button_a_label = "BtnA"
+    # Speaker I2s Initialize
+    fm.register(board_info.SPK_SD, fm.fpioa.GPIO0)
+    spk_sd=GPIO(GPIO.GPIO0, GPIO.OUT)
+    spk_sd.value(1)
+    fm.register(board_info.SPK_DIN,fm.fpioa.I2S1_OUT_D1)
+    fm.register(board_info.SPK_BCLK,fm.fpioa.I2S1_SCLK)
+    fm.register(board_info.SPK_LRCLK,fm.fpioa.I2S1_WS)
+    wav_dev = I2S(I2S.DEVICE_1)
+    music_sample_rate = 96000
 elif ((BOARD_NAME == "MAIXDUINO") or (BOARD_NAME == "M1DOCK")):
     # GPIO Settings for Maixduino or M1Dock.
     lcd.init()
@@ -138,6 +148,23 @@ def record_voice():
         sr.set(i*2, data)
         time.sleep_ms(500)
 
+def play_wav(fname):
+    player = audio.Audio(path=fname)
+    player.volume(100)
+    wav_info = player.play_process(wav_dev)
+    wav_dev.channel_config(wav_dev.CHANNEL_1,
+        I2S.TRANSMITTER,resolution = I2S.RESOLUTION_16_BIT,
+        align_mode = I2S.STANDARD_MODE)
+    wav_dev.set_sample_rate(music_sample_rate)
+    while True:
+        ret = player.play()
+        if ret == None:
+            break
+        elif ret==0:
+            break
+    player.finish()
+    print("finish")
+
 
 ##############################################################################
 # Main
@@ -212,3 +239,4 @@ while True:
                         print("Music mode")
                         uart_port.write(b"M")
                         # TODO: 音声再生処理
+                        play_wav("08_motteke.wav")
